@@ -1,5 +1,20 @@
 import { Router } from 'express';
-import auth from '../../middlewares/auth.middleware.js';
+import {
+  createDebate,
+  getDebates,
+  getDebateById,
+  updateDebate,
+  deleteDebate,
+  getDebateGraph,
+  joinDebate
+} from './debate.controller.js';
+import authMiddleware from '../../middlewares/auth.middleware.js';
+import { validate } from '../../middlewares/validation.middleware.js';
+import { 
+  createDebateSchema, 
+  updateDebateSchema, 
+  debateQuerySchema 
+} from './debate.schema.js';
 
 const router = Router();
 
@@ -20,12 +35,33 @@ const router = Router();
  *           type: string
  *           description: Debate description
  *         creator:
- *           type: string
- *           description: User ID of debate creator
+ *           type: object
+ *           properties:
+ *             _id:
+ *               type: string
+ *             username:
+ *               type: string
+ *             avatar_url:
+ *               type: string
+ *             reputation:
+ *               type: number
  *         status:
  *           type: string
  *           enum: [active, closed, archived]
  *           description: Debate status
+ *         category:
+ *           type: string
+ *           description: Debate category
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         argumentCount:
+ *           type: number
+ *         viewCount:
+ *           type: number
+ *         isPublic:
+ *           type: boolean
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -59,17 +95,37 @@ const router = Router();
  *           type: string
  *           enum: [active, closed, archived]
  *         description: Filter by debate status
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in title and description
  *     responses:
  *       200:
  *         description: List of debates
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Debate'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     debates:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Debate'
+ *                     pagination:
+ *                       type: object
  */
-router.get('/', (req, res) => res.json([]));
+router.get('/', validate(debateQuerySchema), getDebates);
 
 /**
  * @swagger
@@ -89,25 +145,29 @@ router.get('/', (req, res) => res.json([]));
  *             properties:
  *               title:
  *                 type: string
- *                 description: Debate title
+ *                 minLength: 5
+ *                 maxLength: 200
  *               description:
  *                 type: string
- *                 description: Debate description
+ *                 minLength: 10
+ *                 maxLength: 2000
+ *               category:
+ *                 type: string
+ *                 maxLength: 50
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 maxItems: 10
+ *               isPublic:
+ *                 type: boolean
  *     responses:
  *       201:
  *         description: Debate created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Debate'
  *       401:
  *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.post('/', auth, (req, res) => res.json({}));
+router.post('/', authMiddleware, validate(createDebateSchema), createDebate);
 
 /**
  * @swagger
@@ -125,18 +185,68 @@ router.post('/', auth, (req, res) => res.json({}));
  *     responses:
  *       200:
  *         description: Debate details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Debate'
  *       404:
  *         description: Debate not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', (req, res) => res.json({}));
+router.get('/:id', getDebateById);
+
+/**
+ * @swagger
+ * /debates/{id}:
+ *   put:
+ *     summary: Update debate
+ *     tags: [Debates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [active, closed, archived]
+ *     responses:
+ *       200:
+ *         description: Debate updated successfully
+ *       403:
+ *         description: Only debate creator can update
+ */
+router.put('/:id', authMiddleware, validate(updateDebateSchema), updateDebate);
+
+/**
+ * @swagger
+ * /debates/{id}:
+ *   delete:
+ *     summary: Delete debate
+ *     tags: [Debates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Debate deleted successfully
+ *       403:
+ *         description: Only debate creator can delete
+ */
+router.delete('/:id', authMiddleware, deleteDebate);
 
 /**
  * @swagger
@@ -159,21 +269,40 @@ router.get('/:id', (req, res) => res.json({}));
  *             schema:
  *               type: object
  *               properties:
- *                 nodes:
- *                   type: array
- *                   items:
- *                     type: object
- *                 edges:
- *                   type: array
- *                   items:
- *                     type: object
- *       404:
- *         description: Debate not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                 debate:
+ *                   type: object
+ *                 graph:
+ *                   type: object
+ *                   properties:
+ *                     nodes:
+ *                       type: array
+ *                     edges:
+ *                       type: array
+ *                 stats:
+ *                   type: object
  */
-router.get('/:id/graph', (req, res) => res.json({}));
+router.get('/:id/graph', getDebateGraph);
+
+/**
+ * @swagger
+ * /debates/{id}/join:
+ *   post:
+ *     summary: Join a debate
+ *     tags: [Debates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully joined debate
+ *       400:
+ *         description: Already a participant or debate closed
+ */
+router.post('/:id/join', authMiddleware, joinDebate);
 
 export default router;
