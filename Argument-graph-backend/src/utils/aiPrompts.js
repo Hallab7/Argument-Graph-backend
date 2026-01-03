@@ -27,7 +27,9 @@ Respond in JSON format:
 `;
 
 export const FACT_CHECK_PROMPT = `
-You are a fact-checking expert. Analyze the following text and identify factual claims that can be verified.
+You are a fact-checking expert. You MUST respond with ONLY valid JSON, no other text.
+
+Analyze the following text and identify factual claims that can be verified.
 
 For each claim, provide:
 1. The extracted claim
@@ -38,38 +40,35 @@ For each claim, provide:
 
 Text to analyze: "{text}"
 
-Respond in JSON format:
+You MUST respond with EXACTLY this JSON format (no markdown, no extra text):
 {
   "claims": [
     {
       "claim": "Extracted factual claim",
-      "verdict": "true|false|partially_true|unverifiable",
+      "verdict": "true",
       "confidence": 0.8,
       "reasoning": "Brief explanation of assessment",
       "suggested_sources": ["Source 1", "Source 2"]
     }
   ]
 }
+
+IMPORTANT: Return ONLY the JSON object above, nothing else.
 `;
 
 export const SUMMARIZATION_PROMPT = `
-Summarize the following content according to these specifications:
-- Style: {style}
-- Maximum length: {maxLength} words
-- Focus on the main arguments and key points
+Summarize this content in {maxLength} words or less using {style} style.
 
-Content to summarize: "{content}"
+Content: "{content}"
 
-Respond in JSON format:
-{
-  "summary": "The summarized content",
-  "key_points": ["Point 1", "Point 2", "Point 3"],
-  "word_count": 150
-}
+Return only this JSON format:
+{"summary": "your summary here", "key_points": ["point 1", "point 2"], "word_count": 25}
 `;
 
 export const COUNTER_ARGUMENT_PROMPT = `
-You are a skilled debater and critical thinker. Generate thoughtful counter-arguments to the following argument.
+You are a skilled debater and critical thinker. You MUST respond with ONLY valid JSON, no other text.
+
+Generate thoughtful counter-arguments to the following argument.
 
 Original argument: "{argument}"
 Context: {context}
@@ -80,21 +79,25 @@ Generate {maxSuggestions} counter-arguments that:
 3. Are substantive and well-reasoned
 4. Suggest supporting evidence that could strengthen the counter-argument
 
-Respond in JSON format:
+You MUST respond with EXACTLY this JSON format (no markdown, no extra text):
 {
   "counter_arguments": [
     {
       "argument": "The counter-argument text",
-      "type": "logical|empirical|ethical|practical",
+      "type": "logical",
       "strength": 0.8,
       "supporting_evidence": ["Evidence 1", "Evidence 2"]
     }
   ]
 }
+
+IMPORTANT: Return ONLY the JSON object above, nothing else.
 `;
 
 export const ARGUMENT_STRENGTH_PROMPT = `
-You are an expert in argumentation and critical thinking. Analyze the strength of the following argument across multiple criteria.
+You are an expert in argumentation and critical thinking. You MUST respond with ONLY valid JSON, no other text.
+
+Analyze the strength of the following argument across multiple criteria.
 
 Argument to analyze: "{argument}"
 
@@ -110,7 +113,7 @@ Also provide:
 - Main weaknesses or areas for improvement
 - Specific suggestions for strengthening the argument
 
-Respond in JSON format:
+You MUST respond with EXACTLY this JSON format (no markdown, no extra text):
 {
   "overall_strength": 0.7,
   "criteria_scores": {
@@ -123,6 +126,8 @@ Respond in JSON format:
   "weaknesses": ["Weakness 1", "Weakness 2"],
   "suggestions": ["Suggestion 1", "Suggestion 2"]
 }
+
+IMPORTANT: Return ONLY the JSON object above, nothing else.
 `;
 
 // Helper function to replace placeholders in prompts

@@ -4,8 +4,12 @@ import {
   checkFallacies,
   factCheck,
   summarize,
-  suggestCounter
+  suggestCounter,
+  analyzeArgumentStrength,
+  getCacheStats,
+  clearCache
 } from './ai.controller.js';
+import { cacheAIResponse, cacheTTL } from '../../middlewares/cache.middleware.js';
 
 const router = Router();
 
@@ -42,7 +46,7 @@ router.get('/test', testAIService);
  *       200:
  *         description: Fallacy analysis results
  */
-router.post('/check-fallacies', checkFallacies);
+router.post('/check-fallacies', cacheAIResponse('fallacies', cacheTTL.long), checkFallacies);
 
 /**
  * @swagger
@@ -65,7 +69,7 @@ router.post('/check-fallacies', checkFallacies);
  *       200:
  *         description: Fact-check results
  */
-router.post('/fact-check', factCheck);
+router.post('/fact-check', cacheAIResponse('fact-check', cacheTTL.medium), factCheck);
 
 /**
  * @swagger
@@ -97,7 +101,7 @@ router.post('/fact-check', factCheck);
  *       200:
  *         description: Summary generated successfully
  */
-router.post('/summarize', summarize);
+router.post('/summarize', cacheAIResponse('summarize', cacheTTL.long), summarize);
 
 /**
  * @swagger
@@ -127,6 +131,53 @@ router.post('/summarize', summarize);
  *       200:
  *         description: Counter-arguments generated successfully
  */
-router.post('/suggest-counter', suggestCounter);
+router.post('/suggest-counter', cacheAIResponse('counter-args', cacheTTL.medium), suggestCounter);
+
+/**
+ * @swagger
+ * /ai/analyze-strength:
+ *   post:
+ *     summary: Analyze argument strength
+ *     tags: [AI Analysis]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [argument]
+ *             properties:
+ *               argument:
+ *                 type: string
+ *                 description: Argument to analyze for strength
+ *     responses:
+ *       200:
+ *         description: Argument strength analysis results
+ */
+router.post('/analyze-strength', cacheAIResponse('analyze-strength', cacheTTL.long), analyzeArgumentStrength);
+
+/**
+ * @swagger
+ * /ai/cache/stats:
+ *   get:
+ *     summary: Get cache statistics
+ *     tags: [AI Cache]
+ *     responses:
+ *       200:
+ *         description: Cache statistics
+ */
+router.get('/cache/stats', getCacheStats);
+
+/**
+ * @swagger
+ * /ai/cache/clear:
+ *   post:
+ *     summary: Clear AI response cache
+ *     tags: [AI Cache]
+ *     responses:
+ *       200:
+ *         description: Cache cleared successfully
+ */
+router.post('/cache/clear', clearCache);
 
 export default router;

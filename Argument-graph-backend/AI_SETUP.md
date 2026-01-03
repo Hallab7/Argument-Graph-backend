@@ -1,39 +1,62 @@
 # AI Service Integration Setup
 
 ## Overview
-The Argument Graph backend now includes real AI service integration using OpenAI's GPT models for:
+The Argument Graph backend now includes real AI service integration with **Google Gemini** as the primary provider and **OpenAI** as a fallback option. The system provides:
 - Logical fallacy detection
 - Fact-checking
 - Content summarization
 - Counter-argument generation
 - Argument strength analysis
 
+## AI Provider Priority
+1. **Primary**: Google Gemini (generous free tier - 15 requests/minute, 1500/day)
+2. **Fallback**: OpenAI GPT-3.5-turbo (if Gemini fails and OpenAI is configured)
+
 ## Setup Instructions
 
-### 1. Get OpenAI API Key
+### Option 1: Google Gemini (Recommended - Free Tier Available)
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Copy the API key
+5. Add to `.env` file:
+   ```
+   GEMINI_API_KEY=your-actual-gemini-api-key-here
+   ```
+
+### Option 2: OpenAI (Fallback/Alternative)
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Create an account or sign in
 3. Generate a new API key
-4. Copy the API key (starts with `sk-`)
-
-### 2. Configure Environment Variables
-1. Open the `.env` file in the backend root directory
-2. Replace `your-openai-api-key-here` with your actual OpenAI API key:
+4. Add to `.env` file:
    ```
    OPENAI_API_KEY=sk-your-actual-api-key-here
    ```
 
-### 3. Test the Integration
+### Option 3: Both (Recommended for Production)
+Configure both for maximum reliability:
+```
+GEMINI_API_KEY=your-actual-gemini-api-key-here
+OPENAI_API_KEY=sk-your-actual-api-key-here
+```
+
+## Test the Integration
 1. Start the server: `npm run dev`
 2. Test the AI service: `GET http://localhost:5000/api/v1/ai/test`
-3. Expected response when configured correctly:
+3. Expected response when Gemini is configured:
    ```json
    {
      "success": true,
      "data": {
-       "configured": true,
-       "message": "OpenAI connection successful",
-       "model": "gpt-3.5-turbo"
+       "primaryProvider": "gemini",
+       "availableProviders": ["gemini"],
+       "results": {
+         "gemini": {
+           "configured": true,
+           "message": "Gemini connection successful"
+         }
+       },
+       "configured": true
      }
    }
    ```
@@ -81,28 +104,35 @@ The Argument Graph backend now includes real AI service integration using OpenAI
 ## Error Handling
 
 ### Common Errors:
-1. **API Key Not Configured**: Returns 503 Service Unavailable
+1. **No AI Provider Configured**: Returns 503 Service Unavailable
 2. **Invalid API Key**: Returns 500 Internal Server Error
-3. **Rate Limit Exceeded**: Returns 500 with quota error message
+3. **Rate Limit Exceeded**: Automatically falls back to secondary provider if available
 4. **Text Too Short**: Returns 400 Bad Request
+5. **JSON Parse Error**: Automatically retries with JSON extraction
 
 ### Fallback Behavior:
-- When OpenAI is not configured, endpoints return appropriate error messages
-- No placeholder/mock responses are returned in production
-- All errors include detailed messages for debugging
+- **Primary**: Gemini is tried first if configured
+- **Fallback**: OpenAI is used if Gemini fails and OpenAI is configured
+- **Graceful Degradation**: Detailed error messages when both providers fail
+- **No Mock Data**: Real AI responses only, no placeholder data in production
 
 ## Cost Considerations
 
-### Token Usage:
-- Fallacy detection: ~500-1000 tokens per request
-- Fact checking: ~800-1200 tokens per request
-- Summarization: ~400-800 tokens per request
-- Counter-arguments: ~1000-1500 tokens per request
+### Google Gemini (Free Tier):
+- **Free Quota**: 15 requests per minute, 1500 requests per day
+- **Rate Limits**: Very generous for development and small-scale production
+- **Cost**: $0 for free tier usage
+- **Paid Tiers**: Available for higher usage needs
 
-### Estimated Costs (GPT-3.5-turbo):
-- Input: $0.0015 per 1K tokens
-- Output: $0.002 per 1K tokens
-- Average cost per request: $0.002-$0.005
+### OpenAI GPT-3.5-turbo (Fallback):
+- **Token Usage**: ~500-1500 tokens per request
+- **Costs**: $0.0015 per 1K input tokens, $0.002 per 1K output tokens
+- **Average cost per request**: $0.002-$0.005
+
+### Recommended Strategy:
+1. **Development**: Use Gemini free tier
+2. **Production**: Configure both for reliability
+3. **High Volume**: Consider Gemini paid tiers (more cost-effective than OpenAI)
 
 ## Security Notes
 
@@ -127,12 +157,29 @@ The Argument Graph backend now includes real AI service integration using OpenAI
 ## Development vs Production
 
 ### Development:
-- Uses `gpt-3.5-turbo` for cost efficiency
-- Detailed error messages for debugging
-- No request caching
+- **Primary**: Gemini free tier (perfect for development)
+- **Fallback**: OpenAI if needed
+- **Detailed error messages** for debugging
+- **No request caching**
 
 ### Production Recommendations:
-- Consider upgrading to `gpt-4` for better accuracy
-- Implement request caching for repeated queries
-- Set up monitoring and alerting
-- Configure backup AI providers if needed
+- **Configure both providers** for maximum reliability
+- **Monitor rate limits** and usage patterns
+- **Implement request caching** for repeated queries
+- **Set up monitoring and alerting**
+- **Consider Gemini paid tiers** for higher volume needs
+
+## Getting Started Quickly
+
+### Fastest Setup (Free):
+1. Get Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Add `GEMINI_API_KEY=your-key-here` to `.env`
+3. Restart server
+4. Test with `GET /api/v1/ai/test`
+5. Start using AI endpoints immediately!
+
+### For Maximum Reliability:
+1. Get both Gemini and OpenAI API keys
+2. Configure both in `.env`
+3. System will use Gemini primarily, OpenAI as fallback
+4. Enjoy 99.9% uptime for AI features

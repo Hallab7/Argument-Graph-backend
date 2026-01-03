@@ -1,10 +1,10 @@
 import { AIService } from './ai.service.js';
 import { ApiResponse, sendResponse } from '../../utils/ApiResponse.js';
-import { testOpenAIConnection } from '../../config/openai.js';
+import cacheService from '../../services/cache.service.js';
 
 export const testAIService = async (req, res, next) => {
   try {
-    const result = await testOpenAIConnection();
+    const result = await AIService.testConnection();
     
     const response = ApiResponse.success(
       result,
@@ -71,6 +71,51 @@ export const suggestCounter = async (req, res, next) => {
     const response = ApiResponse.success(
       result,
       'Counter-arguments generated successfully'
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const analyzeArgumentStrength = async (req, res, next) => {
+  try {
+    const result = await AIService.analyzeArgumentStrength(req.body.argument);
+    
+    const response = ApiResponse.success(
+      result,
+      'Argument strength analysis completed'
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCacheStats = async (req, res, next) => {
+  try {
+    const stats = cacheService.getStats();
+    
+    const response = ApiResponse.success(
+      stats,
+      'Cache statistics retrieved'
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearCache = async (req, res, next) => {
+  try {
+    cacheService.clear();
+    
+    const response = ApiResponse.success(
+      { cleared: true },
+      'Cache cleared successfully'
     );
     
     sendResponse(res, response);
