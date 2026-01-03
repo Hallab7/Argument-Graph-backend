@@ -1,5 +1,21 @@
 import { AIService } from './ai.service.js';
 import { ApiResponse, sendResponse } from '../../utils/ApiResponse.js';
+import { testOpenAIConnection } from '../../config/openai.js';
+
+export const testAIService = async (req, res, next) => {
+  try {
+    const result = await testOpenAIConnection();
+    
+    const response = ApiResponse.success(
+      result,
+      'AI service test completed'
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const checkFallacies = async (req, res, next) => {
   try {

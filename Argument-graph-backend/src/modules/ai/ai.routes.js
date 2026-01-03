@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  testAIService,
   checkFallacies,
   factCheck,
   summarize,
@@ -7,6 +8,18 @@ import {
 } from './ai.controller.js';
 
 const router = Router();
+
+/**
+ * @swagger
+ * /ai/test:
+ *   get:
+ *     summary: Test AI service connection
+ *     tags: [AI Analysis]
+ *     responses:
+ *       200:
+ *         description: AI service test results
+ */
+router.get('/test', testAIService);
 
 /**
  * @swagger
