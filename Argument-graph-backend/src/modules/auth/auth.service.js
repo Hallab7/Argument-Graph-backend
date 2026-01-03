@@ -12,16 +12,22 @@ export class AuthService {
   static async register(userData) {
     const { email, username, password } = userData;
 
+    // Normalize username to lowercase
+    const normalizedUsername = username.toLowerCase().trim();
+
     // Check if user already exists
     const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+      $or: [
+        { email }, 
+        { username: normalizedUsername }
+      ]
     });
 
     if (existingUser) {
       if (existingUser.email === email) {
         throw ApiError.conflict('Email already registered');
       }
-      if (existingUser.username === username) {
+      if (existingUser.username === normalizedUsername) {
         throw ApiError.conflict('Username already taken');
       }
     }
@@ -29,10 +35,10 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
+    // Create user with normalized username
     const user = await User.create({
       email,
-      username,
+      username: normalizedUsername,
       password: hashedPassword
     });
 
@@ -96,16 +102,21 @@ export class AuthService {
   static async updateProfile(userId, updateData, avatarFile = null) {
     const { username } = updateData;
 
-    // Check if new username already exists
+    // Check if new username already exists (case-insensitive)
     if (username) {
+      const normalizedUsername = username.toLowerCase().trim();
+      
       const existingUser = await User.findOne({
         _id: { $ne: userId },
-        username: username
+        username: normalizedUsername
       });
 
       if (existingUser) {
         throw ApiError.conflict('Username already taken');
       }
+      
+      // Update the username in updateData to normalized version
+      updateData.username = normalizedUsername;
     }
 
     // Handle avatar upload if provided
@@ -394,6 +405,54 @@ export class AuthService {
       }
       
       throw ApiError.internal('Failed to delete account. Please try again.');
+    }
+  }
+
+  static async checkUsernameAvailability(username) {
+    try {
+      // Convert username to lowercase for case-insensitive check
+      const normalizedUsername = username.toLowerCase().trim();
+      
+      // Validate username format
+      if (!normalizedUsername) {
+        throw ApiError.badRequest('Username is required');
+      }
+      
+      if (normalizedUsername.length < 3) {
+        throw ApiError.badRequest('Username must be at least 3 characters');
+      }
+      
+      if (normalizedUsername.length > 30) {
+        throw ApiError.badRequest('Username must not exceed 30 characters');
+      }
+      
+      if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
+        throw ApiError.badRequest('Username can only contain letters, numbers, and underscores');
+      }
+      
+      // Check if username exists (case-insensitive)
+      const existingUser = await User.findOne({ 
+        username: normalizedUsername 
+      });
+      
+      const isAvailable = !existingUser;
+      
+      return {
+        username: normalizedUsername,
+        available: isAvailable,
+        message: isAvailable 
+          ? 'Username is available' 
+          : 'Username is already taken'
+      };
+      
+    } catch (error) {
+      console.error('Username availability check error:', error);
+      
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      throw ApiError.internal('Failed to check username availability');
     }
   }
 }

@@ -159,3 +159,24 @@ export const deleteAccount = async (req, res, next) => {
     next(error);
   }
 };
+
+export const checkUsernameAvailability = async (req, res, next) => {
+  try {
+    const { username } = req.params;
+    
+    if (!username) {
+      return next(ApiError.badRequest('Username parameter is required'));
+    }
+    
+    const result = await AuthService.checkUsernameAvailability(username);
+    
+    const response = ApiResponse.success(
+      result,
+      result.message
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};

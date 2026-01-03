@@ -8,7 +8,8 @@ import {
   uploadAvatar,
   removeAvatar,
   logout,
-  deleteAccount
+  deleteAccount,
+  checkUsernameAvailability
 } from './auth.controller.js';
 import authMiddleware from '../../middlewares/auth.middleware.js';
 import { validate } from '../../middlewares/validation.middleware.js';
@@ -366,5 +367,60 @@ router.post('/logout', authMiddleware, logout);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete('/delete-account', authMiddleware, deleteAccount);
+
+/**
+ * @swagger
+ * /auth/check-username/{username}:
+ *   get:
+ *     summary: Check if username is available
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 30
+ *           pattern: '^[a-zA-Z0-9_]+$'
+ *         description: Username to check (case-insensitive)
+ *         example: "JohnDoe123"
+ *     responses:
+ *       200:
+ *         description: Username availability check result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Username is available"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     username:
+ *                       type: string
+ *                       description: Normalized username (lowercase)
+ *                       example: "johndoe123"
+ *                     available:
+ *                       type: boolean
+ *                       description: Whether the username is available
+ *                       example: true
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable availability message
+ *                       example: "Username is available"
+ *       400:
+ *         description: Invalid username format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/check-username/:username', checkUsernameAvailability);
 
 export default router;
