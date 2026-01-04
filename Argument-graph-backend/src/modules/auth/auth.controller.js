@@ -9,7 +9,8 @@ export const register = async (req, res, next) => {
     const response = ApiResponse.created(
       {
         user: result.user,
-        token: result.token
+        token: result.token,
+        refreshToken: result.refreshToken
       },
       'User registered successfully'
     );
@@ -27,7 +28,8 @@ export const login = async (req, res, next) => {
     const response = ApiResponse.success(
       {
         user: result.user,
-        token: result.token
+        token: result.token,
+        refreshToken: result.refreshToken
       },
       'Login successful'
     );
@@ -152,6 +154,31 @@ export const deleteAccount = async (req, res, next) => {
     const response = ApiResponse.success(
       result,
       'Account deleted successfully'
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return next(ApiError.badRequest('Refresh token is required'));
+    }
+    
+    const result = await AuthService.refreshToken(refreshToken);
+    
+    const response = ApiResponse.success(
+      {
+        user: result.user,
+        token: result.token,
+        refreshToken: result.refreshToken
+      },
+      'Token refreshed successfully'
     );
     
     sendResponse(res, response);

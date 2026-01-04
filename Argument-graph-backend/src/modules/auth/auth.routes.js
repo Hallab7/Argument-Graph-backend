@@ -9,6 +9,7 @@ import {
   removeAvatar,
   logout,
   deleteAccount,
+  refreshToken,
   checkUsernameAvailability
 } from './auth.controller.js';
 import authMiddleware from '../../middlewares/auth.middleware.js';
@@ -19,7 +20,8 @@ import {
   registerSchema, 
   loginSchema, 
   updateProfileSchema, 
-  changePasswordSchema 
+  changePasswordSchema,
+  refreshTokenSchema
 } from './auth.schema.js';
 
 const router = Router();
@@ -85,6 +87,46 @@ router.post('/register', authRateLimiter, validate(registerSchema), register);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/login', authRateLimiter, validate(loginSchema), login);
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token using refresh token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Valid refresh token
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Refresh token is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Invalid or expired refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/refresh', authRateLimiter, validate(refreshTokenSchema), refreshToken);
 
 /**
  * @swagger

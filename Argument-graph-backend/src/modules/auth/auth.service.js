@@ -4,7 +4,7 @@ import Argument from '../arguments/argument.model.js';
 import Rating from '../ratings/rating.model.js';
 import Connection from '../connections/connection.model.js';
 import bcrypt from 'bcrypt';
-import { signToken, verifyToken } from '../../utils/jwt.js';
+import { signToken, verifyToken, signRefreshToken, verifyRefreshToken } from '../../utils/jwt.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { uploadToCloudinary, deleteFromCloudinary, extractPublicId, isCloudinaryConfigured } from '../../config/cloudinary.js';
 
@@ -42,8 +42,9 @@ export class AuthService {
       password: hashedPassword
     });
 
-    // Generate token
+    // Generate tokens
     const token = signToken(user._id);
+    const refreshToken = signRefreshToken(user._id);
 
     // Return user without password
     const userResponse = user.toObject();
@@ -51,7 +52,8 @@ export class AuthService {
 
     return {
       user: userResponse,
-      token
+      token,
+      refreshToken
     };
   }
 
@@ -76,8 +78,9 @@ export class AuthService {
     user.lastLogin = new Date();
     await user.save();
 
-    // Generate token
+    // Generate tokens
     const token = signToken(user._id);
+    const refreshToken = signRefreshToken(user._id);
 
     // Return user without password
     const userResponse = user.toObject();
@@ -85,7 +88,8 @@ export class AuthService {
 
     return {
       user: userResponse,
-      token
+      token,
+      refreshToken
     };
   }
 
@@ -405,6 +409,39 @@ export class AuthService {
       }
       
       throw ApiError.internal('Failed to delete account. Please try again.');
+    }
+  }
+
+  static async refreshToken(refreshTokenString) {
+    try {
+      // Verify the refresh token
+      const decoded = verifyRefreshToken(refreshTokenString);
+      
+      // Get the user
+      const user = await User.findById(decoded.id);
+      
+      if (!user) {
+        throw ApiError.unauthorized('User not found');
+      }
+      
+      // Generate new access token
+      const newToken = signToken(user._id);
+      
+      // Optionally generate new refresh token (rotate refresh tokens)
+      const newRefreshToken = signRefreshToken(user._id);
+      
+      return {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        user: user.toObject()
+      };
+      
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      throw ApiError.unauthorized('Invalid refresh token');
     }
   }
 

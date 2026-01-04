@@ -39,3 +39,9 @@ export const changePasswordSchema = z.object({
       .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number')
   })
 });
+
+export const refreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1, 'Refresh token is required')
+  })
+});

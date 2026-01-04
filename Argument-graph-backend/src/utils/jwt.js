@@ -49,7 +49,7 @@ export const signRefreshToken = (userId) => {
     }, 
     process.env.JWT_REFRESH_SECRET, 
     {
-      expiresIn: '7d' // Refresh tokens last 7 days
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'
     }
   );
 };

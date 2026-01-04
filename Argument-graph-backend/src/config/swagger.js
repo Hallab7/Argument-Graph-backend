@@ -175,7 +175,11 @@ const options = {
                 },
                 token: {
                   type: 'string',
-                  description: 'JWT access token'
+                  description: 'JWT access token (expires in 24h)'
+                },
+                refreshToken: {
+                  type: 'string',
+                  description: 'JWT refresh token (expires in 7 days)'
                 }
               }
             },
