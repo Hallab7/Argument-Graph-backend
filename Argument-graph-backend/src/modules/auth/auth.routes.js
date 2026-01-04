@@ -10,6 +10,9 @@ import {
   logout,
   deleteAccount,
   refreshToken,
+  forgotPassword,
+  verifyResetOTP,
+  resetPassword,
   checkUsernameAvailability
 } from './auth.controller.js';
 import authMiddleware from '../../middlewares/auth.middleware.js';
@@ -21,7 +24,10 @@ import {
   loginSchema, 
   updateProfileSchema, 
   changePasswordSchema,
-  refreshTokenSchema
+  refreshTokenSchema,
+  forgotPasswordSchema,
+  verifyResetOTPSchema,
+  resetPasswordSchema
 } from './auth.schema.js';
 
 const router = Router();
@@ -127,6 +133,179 @@ router.post('/login', authRateLimiter, validate(loginSchema), login);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/refresh', authRateLimiter, validate(refreshTokenSchema), refreshToken);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset OTP
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address of the account
+ *                 example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully (or security message if email not found)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Password reset OTP has been sent to your email address."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sent:
+ *                       type: boolean
+ *                       description: Whether OTP was actually sent
+ *                     expiresIn:
+ *                       type: number
+ *                       description: OTP expiration time in minutes
+ *                       example: 10
+ *       400:
+ *         description: Invalid email format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       503:
+ *         description: Email service not configured
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/forgot-password', authRateLimiter, validate(forgotPasswordSchema), forgotPassword);
+
+/**
+ * @swagger
+ * /auth/verify-reset-otp:
+ *   post:
+ *     summary: Verify password reset OTP
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, otp]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *                 example: "user@example.com"
+ *               otp:
+ *                 type: string
+ *                 pattern: '^[0-9]{4,8}$'
+ *                 description: 4-8 digit OTP code
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "OTP verified successfully. You can now reset your password."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     resetToken:
+ *                       type: string
+ *                       description: Temporary token for password reset (valid 15 minutes)
+ *                     email:
+ *                       type: string
+ *                       description: Verified email address
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/verify-reset-otp', authRateLimiter, validate(verifyResetOTPSchema), verifyResetOTP);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password using reset token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [resetToken, newPassword]
+ *             properties:
+ *               resetToken:
+ *                 type: string
+ *                 description: Reset token from OTP verification
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)'
+ *                 description: New password (min 8 chars, must contain uppercase, lowercase, and number)
+ *                 example: "NewPassword123"
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Password has been reset successfully. You can now log in with your new password."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     email:
+ *                       type: string
+ *                       description: Email of the account that was reset
+ *       400:
+ *         description: Invalid reset token or password format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Invalid or expired reset token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/reset-password', authRateLimiter, validate(resetPasswordSchema), resetPassword);
 
 /**
  * @swagger

@@ -7,6 +7,8 @@ import bcrypt from 'bcrypt';
 import { signToken, verifyToken, signRefreshToken, verifyRefreshToken } from '../../utils/jwt.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { uploadToCloudinary, deleteFromCloudinary, extractPublicId, isCloudinaryConfigured } from '../../config/cloudinary.js';
+import { createOTP, verifyOTP } from '../../utils/otp.js';
+import { sendEmail, emailTemplates, isEmailConfigured } from '../../config/email.js';
 
 export class AuthService {
   static async register(userData) {
@@ -442,6 +444,129 @@ export class AuthService {
       }
       
       throw ApiError.unauthorized('Invalid refresh token');
+    }
+  }
+
+  static async forgotPassword(email) {
+    try {
+      // Check if email service is configured
+      if (!isEmailConfigured()) {
+        throw ApiError.serviceUnavailable('Email service is not configured. Password reset is not available.');
+      }
+
+      // Find user by email
+      const user = await User.findOne({ email: email.toLowerCase() });
+      
+      if (!user) {
+        // For security, don't reveal if email exists or not
+        return {
+          message: 'If an account with this email exists, you will receive a password reset OTP.',
+          sent: false
+        };
+      }
+
+      // Generate OTP
+      const otpExpiresIn = parseInt(process.env.OTP_EXPIRES_IN) || 10;
+      const otpData = await createOTP(email, 'password_reset', otpExpiresIn);
+
+      // Send OTP email
+      const emailTemplate = emailTemplates.otpVerification(otpData.otp, otpExpiresIn);
+      await sendEmail(email, emailTemplate.subject, emailTemplate.html);
+
+      return {
+        message: 'Password reset OTP has been sent to your email address.',
+        sent: true,
+        expiresIn: otpExpiresIn
+      };
+
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      throw ApiError.internalError('Failed to process password reset request');
+    }
+  }
+
+  static async verifyResetOTP(email, otp) {
+    try {
+      // Verify the OTP
+      const verification = await verifyOTP(email, otp, 'password_reset');
+      
+      if (!verification.success) {
+        throw ApiError.badRequest('Invalid or expired OTP');
+      }
+
+      // Generate a temporary reset token (valid for 15 minutes)
+      const resetToken = signToken(verification.email, '15m');
+
+      return {
+        message: 'OTP verified successfully. You can now reset your password.',
+        resetToken,
+        email: verification.email
+      };
+
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      throw ApiError.internalError('Failed to verify OTP');
+    }
+  }
+
+  static async resetPassword(resetToken, newPassword) {
+    try {
+      // Verify the reset token
+      let decoded;
+      try {
+        decoded = verifyToken(resetToken);
+      } catch (tokenError) {
+        throw ApiError.unauthorized('Invalid or expired reset token');
+      }
+
+      // Find user by email (the token contains email as id for reset tokens)
+      const user = await User.findOne({ email: decoded.id });
+      
+      if (!user) {
+        throw ApiError.notFound('User not found');
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      // Update user password
+      user.password = hashedPassword;
+      await user.save();
+
+      // Send confirmation email
+      if (isEmailConfigured()) {
+        try {
+          const emailTemplate = emailTemplates.passwordResetSuccess();
+          await sendEmail(user.email, emailTemplate.subject, emailTemplate.html);
+        } catch (emailError) {
+          console.warn('Failed to send password reset confirmation email:', emailError.message);
+          // Don't fail the password reset if email fails
+        }
+      }
+
+      return {
+        message: 'Password has been reset successfully. You can now log in with your new password.',
+        email: user.email
+      };
+
+    } catch (error) {
+      console.error('Password reset error:', error);
+      
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      throw ApiError.internalError('Failed to reset password');
     }
   }
 

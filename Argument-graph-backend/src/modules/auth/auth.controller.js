@@ -187,6 +187,77 @@ export const refreshToken = async (req, res, next) => {
   }
 };
 
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return next(ApiError.badRequest('Email is required'));
+    }
+    
+    const result = await AuthService.forgotPassword(email);
+    
+    const response = ApiResponse.success(
+      {
+        sent: result.sent,
+        expiresIn: result.expiresIn
+      },
+      result.message
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyResetOTP = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+      return next(ApiError.badRequest('Email and OTP are required'));
+    }
+    
+    const result = await AuthService.verifyResetOTP(email, otp);
+    
+    const response = ApiResponse.success(
+      {
+        resetToken: result.resetToken,
+        email: result.email
+      },
+      result.message
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    
+    if (!resetToken || !newPassword) {
+      return next(ApiError.badRequest('Reset token and new password are required'));
+    }
+    
+    const result = await AuthService.resetPassword(resetToken, newPassword);
+    
+    const response = ApiResponse.success(
+      {
+        email: result.email
+      },
+      result.message
+    );
+    
+    sendResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const checkUsernameAvailability = async (req, res, next) => {
   try {
     const { username } = req.params;
